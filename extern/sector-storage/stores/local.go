@@ -403,6 +403,9 @@ func (st *Local) Reserve(ctx context.Context, sid storage.SectorRef, ft storifac
 			return nil, xerrors.Errorf("getting local storage stat: %w", err)
 		}
 
+//yann start 用于防止其他miner封装的扇区本miner找不到报错
+		si, err := st.CheckDeclareSector(ctx, sid.ID, fileType, ssize, pathType)
+//yann end
 		overhead := int64(overheadTab[fileType]) * int64(ssize) / storiface.FSOverheadDen
 
 		if stat.Available < overhead {
@@ -453,7 +456,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid storage.SectorRef, exist
 			continue
 		}
 
-		si, err := st.index.StorageFindSector(ctx, sid.ID, fileType, ssize, false)
+		//si, err := st.index.StorageFindSector(ctx, sid.ID, fileType, ssize, false)
 		if err != nil {
 			log.Warnf("finding existing sector %d(t:%d) failed: %+v", sid, fileType, err)
 			continue
@@ -662,6 +665,31 @@ func (st *Local) MoveStorage(ctx context.Context, s storage.SectorRef, types sto
 		if fileType&types == 0 {
 			continue
 		}
+//yann start
+func (st *Local) CheckDeclareSector(ctx context.Context, sid abi.SectorID, fileType storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) ([]SectorStorageInfo, error) {
+	si0, err := st.index.StorageFindSector(ctx, sid, fileType, ssize, false)
+ if len(si0) > 0 || err != nil {
+  return si0, err
+	}
+ if pathType == storiface.PathStorage {
+  for id, path := range st.paths {
+   if sstInfo, err := st.index.StorageInfo(ctx, id); err == nil {
+    if sstInfo.CanStore {
+					p := filepath.Join(path.local, fileType.String(), storiface.SectorName(sid))
+					_, err := os.Stat(p)
+     if os.IsNotExist(err) || err != nil {
+      continue
+					}
+     if err := st.index.StorageDeclareSector(ctx, id, sid, fileType, sstInfo.CanStore); err != nil {
+      continue
+					}
+				}
+			}
+		}
+	}
+ return st.index.StorageFindSector(ctx, sid, fileType, ssize, false)
+}
+//yann end
 
 		sst, err := st.index.StorageInfo(ctx, ID(storiface.PathByType(srcIds, fileType)))
 		if err != nil {

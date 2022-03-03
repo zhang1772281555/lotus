@@ -231,6 +231,13 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 			as     = params.AddrSel
 		)
 
+//yann start
+	if _, ok := os.LookupEnv("LOTUS_WDPOST"); ok {
+	 go fps.Run(ctx)
+	} else {
+		log.Warnf("This miner will be disable windowPoSt.")
+	}
+//yann end
 		maddr, err := minerAddrFromDS(ds)
 		if err != nil {
 			return nil, err
@@ -250,7 +257,7 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 
 		lc.Append(fx.Hook{
 			OnStart: func(context.Context) error {
-				go fps.Run(ctx)
+				//go fps.Run(ctx)
 				return sm.Run(ctx)
 			},
 			OnStop: sm.Stop,

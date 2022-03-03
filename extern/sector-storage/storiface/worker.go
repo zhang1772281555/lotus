@@ -24,6 +24,15 @@ func (w WorkerID) String() string {
 type WorkerInfo struct {
 	Hostname string
 
+	Resources WorkerResources
+ //yann start
+	TaskResourcesLk sync.Mutex
+	TaskNumber      TaskConfig //限制进程PC1	数量
+ //yann end
+}
+type WorkerInfo struct {
+	Hostname string
+
 	// IgnoreResources indicates whether the worker's available resources should
 	// be used ignored (true) or used (false) for the purposes of scheduling and
 	// task assignment. Only supported on local workers. Used for testing.
@@ -143,6 +152,65 @@ const (
 	ErrTempWorkerRestart
 	ErrTempAllocateSpace
 )
+//yann start
+type TaskConfig struct {
+	LimitPC1Count int  //限制的PC1总数
+	RunPC1Count   int  //正在跑的PC1数量
+	IsRunningAP   bool //是否正在跑ap
+}
+
+//空闲的任务数量
+func (w *WorkerInfo) GetFreeTaksNumber(phaseTaskType sealtasks.TaskType) int {
+	w.TaskResourcesLk.Lock()
+ defer w.TaskResourcesLk.Unlock()
+ switch phaseTaskType {
+ case sealtasks.TTAddPiece:
+  if w.TaskNumber.IsRunningAP {
+   return 0
+		} else {
+   return 1
+		}
+ case sealtasks.TTPreCommit1:
+  return w.TaskNumber.LimitPC1Count - w.TaskNumber.RunPC1Count
+	}
+ return 0
+}
+
+//接受任务时+1
+func (w *WorkerInfo) TaskAddOne(phaseTaskType sealtasks.TaskType) {
+	w.TaskResourcesLk.Lock()
+ defer w.TaskResourcesLk.Unlock()
+ switch phaseTaskType {
+ case sealtasks.TTAddPiece:
+		w.TaskNumber.IsRunningAP = true
+ case sealtasks.TTPreCommit1:
+		w.TaskNumber.RunPC1Count++
+	}
+}
+
+//完成任务时-1
+func (w *WorkerInfo) TaskReduceOne(phaseTaskType sealtasks.TaskType) {
+	w.TaskResourcesLk.Lock()
+ defer w.TaskResourcesLk.Unlock()
+ switch phaseTaskType {
+ case sealtasks.TTAddPiece:
+		w.TaskNumber.IsRunningAP = false
+ case sealtasks.TTPreCommit1:
+  if w.TaskNumber.RunPC1Count > 0 {
+			w.TaskNumber.RunPC1Count--
+		}
+	}
+}
+
+func NewTaskConfig(LimitPC1Count int) TaskConfig {
+ return TaskConfig{
+		LimitPC1Count: LimitPC1Count,
+		RunPC1Count:   0,
+		IsRunningAP:   false,
+	}
+}
+
+//yann end
 
 type CallError struct {
 	Code    ErrorCode

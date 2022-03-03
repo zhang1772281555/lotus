@@ -162,6 +162,11 @@ func New(ctx context.Context, lstor *stores.Local, stor *stores.Remote, ls store
 		localTasks = append(localTasks, sealtasks.TTCommit2)
 	}
 	if sc.AllowUnseal {
+//yann start
+	err = m.AddWorker(ctx, NewLocalWorker(WorkerConfig{
+		TaskTypes: localTasks,
+	}, stor, lstor, si, m, wss, 0))
+ //yann end
 		localTasks = append(localTasks, sealtasks.TTUnseal)
 	}
 	if sc.AllowReplicaUpdate {

@@ -30,9 +30,56 @@ var sealingCmd = &cli.Command{
 		sealingWorkersCmd,
 		sealingSchedDiagCmd,
 		sealingAbortCmd,
+		sealingTaskCmd, //添加cmd
 	},
 }
+//yann start
+var sealingTaskCmd = &cli.Command{
+	Name:  "tasks",
+	Usage: "return pc1 and ap taks run/limit, 质押的时候用",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{Name: "color"},
+	},
+	Action: func(cctx *cli.Context) error {
+		color.NoColor = !cctx.Bool("color")
 
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+  if err != nil {
+   return err
+		}
+  defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		stats, err := nodeApi.WorkerStats(ctx)
+  if err != nil {
+   return err
+		}
+
+		limit := 0
+		running := 0
+		disabled := 0
+  for _, stat := range stats {
+   if stat.Enabled {
+				limit += stat.Info.TaskNumber.LimitPC1Count
+				running += stat.Info.TaskNumber.RunPC1Count
+    if stat.Info.TaskNumber.IsRunningAP {
+					running++
+				}
+			} else {
+				disabled++
+			}
+		}
+
+		ret := map[string]int{"limit": limit, "running": running, "disabled":disabled}
+		p,  _ := json.MarshalIndent(ret, "", "  ")
+
+		fmt.Println(p)
+
+  return nil
+	},
+}
+//yann end
 var barCols = float64(64)
 
 func barString(total, y, g float64) string {
@@ -102,7 +149,8 @@ var sealingWorkersCmd = &cli.Command{
 				disabled = color.RedString(" (disabled)")
 			}
 
-			fmt.Printf("Worker %s, host %s%s\n", stat.id, color.MagentaString(stat.Info.Hostname), disabled)
+			//fmt.Printf("Worker %s, host %s%s\n", stat.id, color.MagentaString(stat.Info.Hostname), disabled)
+			  fmt.Printf("Worker %s, host %s%s, task %d/%d\n", stat.id, color.MagentaString(stat.Info.Hostname), disabled, stat.Info.TaskNumber.RunPC1Count, stat.Info.TaskNumber.LimitPC1Count)
 
 			fmt.Printf("\tCPU:  [%s] %d/%d core(s) in use\n",
 				barString(float64(stat.Info.Resources.CPUs), 0, float64(stat.CpuUse)), stat.CpuUse, stat.Info.Resources.CPUs)

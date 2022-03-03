@@ -80,7 +80,32 @@ var sectorsPledgeCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+//yann start
+		stats, err := nodeApi.WorkerStats(ctx)
+  if err != nil {
+   return err
+		}
 
+		limit := 0
+		running := 0
+		disabled := 0
+  for _, stat := range stats {
+   if stat.Enabled {//只判断可用的worker
+				limit += stat.Info.TaskNumber.LimitPC1Count
+				running += stat.Info.TaskNumber.RunPC1Count
+    if stat.Info.TaskNumber.IsRunningAP {
+					running++
+				}
+			} else {
+				disabled++
+			}
+		}
+
+  if running >= limit {
+			fmt.Printf("%d/%d, 本次质押暂停.\n", running, limit)
+return nil
+		}
+  //yann end
 		fmt.Println("Created CC sector: ", id.Number)
 
 		return nil

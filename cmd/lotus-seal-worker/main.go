@@ -158,6 +158,13 @@ var runCmd = &cli.Command{
 			Usage: "enable precommit2 (32G sectors: all cores, 96GiB Memory)",
 			Value: true,
 		},
+//yann start
+&cli.IntFlag{
+	Name:  "pc1-num",
+	Usage: "限制worker pc1数量",
+	Value: 0,
+},
+//yann end
 		&cli.BoolFlag{
 			Name:  "commit",
 			Usage: "enable commit (32G sectors: all cores or GPUs, 128GiB Memory + 64GiB swap)",
@@ -424,7 +431,8 @@ var runCmd = &cli.Command{
 			LocalWorker: sectorstorage.NewLocalWorker(sectorstorage.WorkerConfig{
 				TaskTypes: taskTypes,
 				NoSwap:    cctx.Bool("no-swap"),
-			}, remote, localStore, nodeApi, nodeApi, wsts),
+			//}, remote, localStore, nodeApi, nodeApi, wsts),
+			}, remote, localStore, nodeApi, nodeApi, wsts, cctx.Int("pc1-num")),
 			localStore: localStore,
 			ls:         lr,
 		}

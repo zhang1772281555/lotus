@@ -21,7 +21,7 @@ type schedPrioCtxKey int
 
 var SchedPriorityKey schedPrioCtxKey
 var DefaultSchedPriority = 0
-var SelectorTimeout = 5 * time.Second
+var SelectorTimeout = 10 * time.Second
 var InitWait = 3 * time.Second
 
 var (
@@ -404,7 +404,7 @@ func (sh *scheduler) trySched() {
 				ok, err := task.sel.Ok(rpcCtx, task.taskType, task.sector.ProofType, worker)
 				cancel()
 				if err != nil {
-					log.Errorf("trySched(1) req.sel.Ok error: %+v", err)
+					//log.Errorf("trySched(1) req.sel.Ok error: %+v", err)
 					continue
 				}
 
@@ -472,6 +472,28 @@ func (sh *scheduler) trySched() {
 			if !windows[wnd].allocated.canHandleRequest(needRes, wid, "schedAssign", info) {
 				continue
 			}
+//yann start
+//如果woker空闲数量不够则跳过这个worker
+worker, ok := sh.workers[wid]
+if !ok {
+	log.Errorf("worker referenced by windowRequest not found (worker: %s)", wid)
+ // TODO: How to move forward here?
+ continue
+}
+if task.taskType == sealtasks.TTPreCommit1 || task.taskType == sealtasks.TTAddPiece{
+ if worker.info.GetFreeTaksNumber(task.taskType) <= 0 {
+  continue
+	}
+}
+//yann end
+
+# 494行 已经分配到这个窗口则这个窗口对应的worker任务+1
+//yann start 任务已分配到这个窗口, 则这个worker任务数量+1
+if task.taskType == sealtasks.TTPreCommit1 || task.taskType == sealtasks.TTAddPiece{
+ //log.Infof("woker[%v] 任务[%s]++++++1",wid ,task.taskType)
+	worker.info.TaskAddOne(task.taskType)
+}
+//yann end
 
 			log.Debugf("SCHED ASSIGNED sqi:%d sector %d task %s to window %d", sqi, task.sector.ID.Number, task.taskType, wnd)
 

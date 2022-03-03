@@ -116,6 +116,13 @@ type Miner struct {
 	stop     chan struct{}
 	stopping chan struct{}
 
+//yann start
+	if _, ok := os.LookupEnv("LOTUS_WNPOST"); ok {
+ 	 go m.mine(context.TODO())
+	} else {
+		log.Warnf("This miner will be disable minning block function.")
+	}
+//yann end
 	waitFunc waitFunc
 
 	// lastWork holds the last MiningBase we built upon.
@@ -148,7 +155,7 @@ func (m *Miner) Start(_ context.Context) error {
 		return fmt.Errorf("miner already started")
 	}
 	m.stop = make(chan struct{})
-	go m.mine(context.TODO())
+	//go m.mine(context.TODO())
 	return nil
 }
 

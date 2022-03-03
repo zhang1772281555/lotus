@@ -55,6 +55,9 @@ type LocalWorker struct {
 
 	// see equivalent field on WorkerConfig.
 	ignoreResources bool
+//yann start
+pc1Number int //添加限制PC1数量参数
+//yann end
 
 	ct          *workerCallTracker
 	acceptTasks map[sealtasks.TaskType]struct{}
@@ -66,7 +69,10 @@ type LocalWorker struct {
 	closing     chan struct{}
 }
 
-func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, envLookup EnvFunc, store stores.Store, local *stores.Local, sindex stores.SectorIndex, ret storiface.WorkerReturn, cst *statestore.StateStore) *LocalWorker {
+//func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, envLookup EnvFunc, store stores.Store, local *stores.Local, sindex stores.SectorIndex, ret storiface.WorkerReturn, cst *statestore.StateStore) *LocalWorker {
+//yann start 添加限制pc1number参数
+func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, store stores.Store, local *stores.Local, sindex stores.SectorIndex, ret storiface.WorkerReturn, cst *statestore.StateStore, pc1number int) *LocalWorker {
+//yann end
 	acceptTasks := map[sealtasks.TaskType]struct{}{}
 	for _, taskType := range wcfg.TaskTypes {
 		acceptTasks[taskType] = struct{}{}
@@ -88,6 +94,9 @@ func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, envLookup EnvFunc,
 		ignoreResources: wcfg.IgnoreResourceFiltering,
 		session:         uuid.New(),
 		closing:         make(chan struct{}),
+//yann start
+		pc1Number: pc1number,
+  //yann end
 	}
 
 	if w.executor == nil {
@@ -123,7 +132,12 @@ func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, envLookup EnvFunc,
 	return w
 }
 
-func NewLocalWorker(wcfg WorkerConfig, store stores.Store, local *stores.Local, sindex stores.SectorIndex, ret storiface.WorkerReturn, cst *statestore.StateStore) *LocalWorker {
+//func NewLocalWorker(wcfg WorkerConfig, store stores.Store, local *stores.Local, sindex stores.SectorIndex, ret storiface.WorkerReturn, cst *statestore.StateStore) *LocalWorker {
+//yann start 添加限制pc1number参数
+func NewLocalWorker(wcfg WorkerConfig, store stores.Store, local *stores.Local, sindex stores.SectorIndex, ret storiface.WorkerReturn, cst *statestore.StateStore, pc1number int) *LocalWorker {
+ return newLocalWorker(nil, wcfg, store, local, sindex, ret, cst, pc1number)
+}
+//yann end
 	return newLocalWorker(nil, wcfg, os.LookupEnv, store, local, sindex, ret, cst)
 }
 
@@ -644,6 +658,9 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 
 	return storiface.WorkerInfo{
 		Hostname:        hostname,
+//yann start
+		TaskNumber: storiface.NewTaskConfig(l.pc1Number), //告诉miner我可以接多少pc1数量
+  //yann end
 		IgnoreResources: l.ignoreResources,
 		Resources: storiface.WorkerResources{
 			MemPhysical: memPhysical,

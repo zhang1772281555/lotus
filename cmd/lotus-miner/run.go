@@ -55,8 +55,43 @@ var runCmd = &cli.Command{
 			err := os.Setenv("BELLMAN_NO_GPU", "true")
 			if err != nil {
 				return err
+//yann start
+		&cli.BoolFlag{
+			Name:  "wdpost",
+			Usage: "enable windowPoSt",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:  "wnpost",
+			Usage: "enable winningPoSt",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:  "p2p",
+			Usage: "enable P2P",
+			Value: true,
+		},
+		&cli.StringFlag{
+			Name:  "miner-api-other",
+			Usage: "like 172.22.6.97:5678 ",
+			Value: "",
+		},
+//yann end
 			}
 		}
+//yann start
+		if cctx.Bool("wdpost") {
+			os.Setenv("LOTUS_WDPOST", "true")
+			} else {
+			os.Unsetenv("LOTUS_WDPOST")
+			}
+
+		if cctx.Bool("wnpost") {
+			os.Setenv("LOTUS_WNPOST", "true")
+			} else {
+			os.Unsetenv("LOTUS_WNPOST")
+			}
+//yann end
 
 		ctx, _ := tag.New(lcli.DaemonContext(cctx),
 			tag.Insert(metrics.Version, build.BuildVersion),
@@ -140,6 +175,21 @@ var runCmd = &cli.Command{
 		}
 
 		shutdownChan := make(chan struct{})
+//yann start
+		if cctx.Bool("p2p") {
+ 		// Bootstrap with full node
+			remoteAddrs, err := nodeApi.NetAddrsListen(ctx)
+ 		if err != nil {
+  			return xerrors.Errorf("getting full node libp2p address: %w", err)
+		}
+
+		 if err := minerapi.NetConnect(ctx, remoteAddrs); err != nil {
+  			return xerrors.Errorf("connecting to full node (libp2p): %w", err)
+		}
+		} else {
+		log.Warn("This miner will be disable p2p.")
+		}
+//yann end
 
 		var minerapi api.StorageMiner
 		stop, err := node.New(ctx,
@@ -190,6 +240,17 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("failed to start json-rpc endpoint: %s", err)
 		}
+//yann start  用于miner监听多地址 用于worker机器不在一个局域网内
+		if cctx.String("miner-api-other")  != "" {
+			nl, err := net.Listen("tcp", cctx.String("miner-api-other"))
+ 		if err != nil {
+  			panic(err)
+			}
+
+		listener, _ := manet.WrapNetListener(nl)
+ 			go  srv.Serve(manet.NetListener(listener))
+		}
+//yann end
 
 		// Monitor for shutdown.
 		finishCh := node.MonitorShutdown(shutdownChan,

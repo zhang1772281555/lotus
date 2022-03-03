@@ -206,7 +206,7 @@ func (sw *schedWorker) disable(ctx context.Context) error {
 
 func (sw *schedWorker) checkSession(ctx context.Context) bool {
 	for {
-		sctx, scancel := context.WithTimeout(ctx, stores.HeartbeatInterval/2)
+		sctx, scancel := context.WithTimeout(ctx, stores.HeartbeatInterval)
 		curSes, err := sw.worker.workerRpc.Session(sctx)
 		scancel()
 		if err != nil {
@@ -441,6 +441,13 @@ assignLoop:
 			}
 
 			// Note: we're not freeing window.allocated resources here very much on purpose
+//yann start
+//如果本次任务是ap或者pc1则任务数量-1
+if req.taskType == sealtasks.TTPreCommit1 || req.taskType == sealtasks.TTAddPiece {
+	log.Infof("woker[%v]  任务[%s]-1", sw.wid, req.taskType)
+	w.info.TaskReduceOne(req.taskType)
+}
+//yann end
 			copy(firstWindow.todo[tidx:], firstWindow.todo[tidx+1:])
 			firstWindow.todo[len(firstWindow.todo)-1] = nil
 			firstWindow.todo = firstWindow.todo[:len(firstWindow.todo)-1]
